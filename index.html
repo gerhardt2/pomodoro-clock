@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Clock</title>
+  <style>
+    :root {
+      --color-work:  #E05252;
+      --color-short: #2D9E6B;
+      --color-long:  #6B5FD6;
+      --current-color: var(--color-work);
+      --bg: #FAFAF9;
+      --surface: #FFFFFF;
+      --text-primary: #1A1A18;
+      --text-secondary: #6B6B66;
+      --border: rgba(0,0,0,0.1);
+      --ring-track: #E8E7E0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: background 0.4s ease;
+    }
+
+    .app-header {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 1.5rem 0;
+    }
+
+    .app-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 6px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s, background 0.2s;
+    }
+    .btn-icon:hover { color: var(--text-primary); background: var(--border); }
+
+    .timer-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      padding: 2rem;
+    }
+
+    .ring-wrapper {
+      position: relative;
+      width: 260px;
+      height: 260px;
+    }
+
+    .ring-svg { width: 100%; height: 100%; }
+
+    .ring-track { stroke: var(--ring-track); }
+
+    .ring-fill {
+      stroke: var(--current-color);
+      transition: stroke-dashoffset 1s linear, stroke 0.4s ease;
+    }
+
+    .timer-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .time-text {
+      font-size: 52px;
+      font-weight: 600;
+      letter-spacing: -2px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+
+    .phase-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--current-color);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: color 0.4s;
+    }
+
+    .cycle-text { font-size: 12px; color: var(--text-secondary); }
+
+    .controls { display: flex; gap: 12px; align-items: center; }
+
+    .btn {
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 12px 28px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--current-color);
+      color: #fff;
+      transition: background 0.4s, opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      background: var(--ring-track);
+      color: var(--text-secondary);
+    }
+    .btn-secondary:hover { background: #DDDCD4; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 1.75rem;
+      width: 90%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal-title { font-size: 17px; font-weight: 600; }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .setting-row input {
+      width: 70px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+      color: var(--text-primary);
+      background: var(--bg);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 400px) {
+      .ring-wrapper { width: 220px; height: 220px; }
+      .time-text { font-size: 42px; }
+      .btn { padding: 10px 22px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <h1 class="app-title">Pomodoro Clock</h1>
+    <button id="btn-settings" class="btn-icon" aria-label="Configurações">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06
+          a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09
+          A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83
+          l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09
+          A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83
+          l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09
+          a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83
+          l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09
+          a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main class="timer-container">
+    <div class="ring-wrapper">
+      <svg class="ring-svg" viewBox="0 0 200 200">
+        <circle class="ring-track" cx="100" cy="100" r="90" fill="none" stroke-width="8"/>
+        <circle id="ring-progress" class="ring-fill" cx="100" cy="100" r="90"
+          fill="none" stroke-width="8" transform="rotate(-90 100 100)" stroke-linecap="round"/>
+      </svg>
+      <div class="timer-display">
+        <span id="time-display" class="time-text">25:00</span>
+        <span id="phase-label" class="phase-text">Foco</span>
+        <span id="cycle-count" class="cycle-text">Ciclo 1</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btn-reset" class="btn btn-secondary">Resetar</button>
+      <button id="btn-start" class="btn btn-primary">Iniciar</button>
+      <button id="btn-pause" class="btn btn-primary" style="display:none">Pausar</button>
+    </div>
+  </main>
+
+  <div id="modal-settings" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h2 class="modal-title">Configurações</h2>
+      <div class="setting-row">
+        <label for="input-work">Foco (min)</label>
+        <input id="input-work" type="number" min="1" max="60" value="25"/>
+      </div>
+      <div class="setting-row">
+        <label for="input-short">Pausa curta (min)</label>
+        <input id="input-short" type="number" min="1" max="60" value="5"/>
+      </div>
+      <div class="setting-row">
+        <label for="input-long">Pausa longa (min)</label>
+        <input id="input-long" type="number" min="1" max="60" value="15"/>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-settings-close" class="btn btn-secondary">Cancelar</button>
+        <button id="btn-settings-save" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === CONFIGURAÇÃO DAS FASES ===
+    const PHASES = {
+      WORK:        { label: 'FOCO',         color: '#E05252' },
+      SHORT_BREAK: { label: 'PAUSA CURTA',  color: '#2D9E6B' },
+      LONG_BREAK:  { label: 'PAUSA LONGA',  color: '#6B5FD6' },
+    };
+
+    // === ESTADO ===
+    let state = {
+      phase:         'WORK',
+      isRunning:     false,
+      cycleCount:    0,
+      timeRemaining: 25 * 60,
+      durations: { WORK: 25*60, SHORT_BREAK: 5*60, LONG_BREAK: 15*60 },
+    };
+
+    let intervalId = null;
+    const CIRCUMFERENCE = 2 * Math.PI * 90; // ≈ 565.5
+
+    // === REFERÊNCIAS DOM ===
+    const timeDisplay   = document.getElementById('time-display');
+    const phaseLabel    = document.getElementById('phase-label');
+    const cycleCount    = document.getElementById('cycle-count');
+    const btnStart      = document.getElementById('btn-start');
+    const btnPause      = document.getElementById('btn-pause');
+    const btnReset      = document.getElementById('btn-reset');
+    const btnSettings   = document.getElementById('btn-settings');
+    const btnSettSave   = document.getElementById('btn-settings-save');
+    const btnSettClose  = document.getElementById('btn-settings-close');
+    const modal         = document.getElementById('modal-settings');
+    const ring          = document.getElementById('ring-progress');
+
+    // === FUNÇÕES DO TIMER ===
+    function formatTime(secs) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+
+    function startTimer() {
+      if (intervalId) return;
+      state.isRunning = true;
+      updateUI();
+      intervalId = setInterval(function() {
+        state.timeRemaining--;
+        updateUI();
+        if (state.timeRemaining <= 0) {
+          clearInterval(intervalId);
+          intervalId = null;
+          playBell();
+          advancePhase();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      state.isRunning = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      updateUI();
+    }
+
+    function resetTimer() {
+      state.isRunning = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      state.timeRemaining = state.durations[state.phase];
+      updateUI();
+    }
+
+    function advancePhase() {
+      if (state.phase === 'WORK') {
+        state.cycleCount++;
+        state.phase = state.cycleCount % 4 === 0 ? 'LONG_BREAK' : 'SHORT_BREAK';
+      } else {
+        state.phase = 'WORK';
+      }
+      state.isRunning = false;
+      state.timeRemaining = state.durations[state.phase];
+      updateUI();
+    }
+
+    // === ATUALIZA A UI ===
+    function updateUI() {
+      const phase = PHASES[state.phase];
+
+      timeDisplay.textContent = formatTime(state.timeRemaining);
+      phaseLabel.textContent  = phase.label;
+      cycleCount.textContent  = 'Ciclo ' + (state.cycleCount + 1);
+      document.title          = formatTime(state.timeRemaining) + ' — ' + phase.label;
+
+      // Atualiza cor de todos os elementos que usam --current-color
+      document.documentElement.style.setProperty('--current-color', phase.color);
+
+      // Anima o anel SVG
+      const progress = state.timeRemaining / state.durations[state.phase];
+      ring.style.strokeDasharray  = CIRCUMFERENCE;
+      ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+      ring.style.stroke           = phase.color;
+
+      // Alterna botões start/pause
+      btnStart.style.display = state.isRunning ? 'none'        : 'inline-flex';
+      btnPause.style.display = state.isRunning ? 'inline-flex' : 'none';
+
+      // Cor dos botões primários
+      btnStart.style.background = phase.color;
+      btnPause.style.background = phase.color;
+    }
+
+    // === SOM ===
+    function playBell() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 1.2);
+      } catch(e) {}
+    }
+
+    // === CONFIGURAÇÕES ===
+    function openSettings() {
+      document.getElementById('input-work').value  = state.durations.WORK / 60;
+      document.getElementById('input-short').value = state.durations.SHORT_BREAK / 60;
+      document.getElementById('input-long').value  = state.durations.LONG_BREAK / 60;
+      modal.style.display = 'flex';
+    }
+
+    function closeSettings() {
+      modal.style.display = 'none';
+    }
+
+    function saveSettings() {
+      const w = parseInt(document.getElementById('input-work').value);
+      const s = parseInt(document.getElementById('input-short').value);
+      const l = parseInt(document.getElementById('input-long').value);
+      if ([w,s,l].some(v => isNaN(v) || v < 1 || v > 60)) {
+        alert('Insira valores entre 1 e 60 minutos.');
+        return;
+      }
+      state.durations.WORK        = w * 60;
+      state.durations.SHORT_BREAK = s * 60;
+      state.durations.LONG_BREAK  = l * 60;
+      // Aplica imediatamente se a fase atual foi alterada
+      state.timeRemaining = state.durations[state.phase];
+      try {
+        localStorage.setItem('pomodoro-config', JSON.stringify({w,s,l}));
+      } catch(e) {}
+      closeSettings();
+      updateUI();
+    }
+
+    function loadSavedConfig() {
+      try {
+        const saved = localStorage.getItem('pomodoro-config');
+        if (!saved) return;
+        const {w,s,l} = JSON.parse(saved);
+        state.durations.WORK        = w * 60;
+        state.durations.SHORT_BREAK = s * 60;
+        state.durations.LONG_BREAK  = l * 60;
+        state.timeRemaining = state.durations.WORK;
+      } catch(e) {}
+    }
+
+    // === EVENT LISTENERS ===
+    btnStart.addEventListener('click', startTimer);
+    btnPause.addEventListener('click', pauseTimer);
+    btnReset.addEventListener('click', resetTimer);
+    btnSettings.addEventListener('click', openSettings);
+    btnSettSave.addEventListener('click', saveSettings);
+    btnSettClose.addEventListener('click', closeSettings);
+
+    // Fecha modal clicando fora
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeSettings();
+    });
+
+    // === INICIALIZA ===
+    loadSavedConfig();
+    updateUI();
+  </script>
+</body>
+</html>
