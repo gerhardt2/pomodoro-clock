@@ -98,7 +98,7 @@ cd pomodoro-clock
 
 ## Licença
 
-MIT © [Seu Nome](https://github.com/SEU-USUARIO)
+MIT © [Gerhardt2](https://github.com/gerhardt2)
 
 ---
 
