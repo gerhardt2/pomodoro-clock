@@ -9,7 +9,9 @@
 
 ## Demonstração
 
-> 📸 _Adicione um GIF ou screenshot depois de construir o projeto_
+<img width="458" height="660" alt="pomodoro img3" src="https://github.com/user-attachments/assets/30695225-5b8f-4fc4-b47e-ad9dfc20f474" />
+<img width="442" height="594" alt="pomodoro img2" src="https://github.com/user-attachments/assets/3abe23a0-34b3-4eef-a881-db31b0165c7b" />
+<img width="650" height="726" alt="pomodoro img1" src="https://github.com/user-attachments/assets/a57fdffa-29f2-4cdd-83c5-e5c48afa21a5" />
 
 ---
 
